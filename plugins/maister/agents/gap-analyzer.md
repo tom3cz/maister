@@ -295,6 +295,8 @@ The orchestrator will present ALL items in `decisions_needed.critical` and `deci
 
 **If completeness_score < 100%, there MUST be items in decisions_needed.**
 
+**Every `decisions_needed` item carries a pick**: a `recommendation` (critical items), or a `recommendation` or `default` (important items), naming one of its `options`, plus a one-line `rationale`. Exception: a safety-critical item may carry `recommendation: null` when the evidence does not support a pick; its `rationale` then names the missing evidence. Never invent a pick. The orchestrator still presents every item; the pick is your best evidence-based suggestion, not a decision.
+
 ---
 
 ## Output Format

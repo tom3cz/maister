@@ -1,6 +1,6 @@
 # Workflow Details
 
-Maister provides five workflow types, each with phases tailored to its needs. All workflows pause between phases for your review and input.
+Maister provides five workflow types, each with phases tailored to its needs. All workflows pause between phases for your review and input. The exception is a development run you start with `--autonomous` (alias `--no-questions`): it answers gates from its recommendations, logs each answer, and stops only at hard stops such as rollback, commits or a blocker that survives three attempts.
 
 ## Development Workflow
 
@@ -14,7 +14,7 @@ The unified development workflow handles features, enhancements, and bug fixes t
 
 When run without arguments, the plugin extracts the task description from your conversation and auto-detects the type (feature, bug, or enhancement). Use `--type=` only when you want to override the auto-detection.
 
-**Flags**: `--type=bug|enhancement|feature`, `--e2e`, `--user-docs`, `--code-review`, `--research=PATH`, `--from=PHASE`
+**Flags**: `--type=bug|enhancement|feature`, `--e2e`, `--user-docs`, `--code-review`, `--research=PATH`, `--from=PHASE`, `--autonomous` (alias `--no-questions`; see [Command Reference](commands.md))
 
 ### Phases
 

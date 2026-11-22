@@ -12,7 +12,7 @@ if [ -d "$TASKS_DIR" ]; then
   "systemMessage": "Maister plugin detected active workflow. Check orchestrator-state.yml for phase.",
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": "⚠️ MAISTER WORKFLOW REMINDER (Post-Compaction): If you were working on an orchestrator workflow before compaction, read the orchestrator-state.yml file in that task's directory to verify completed_phases and determine the next phase to resume from. You MUST use AskUserQuestion at Phase Gates, regardless of any 'continue without asking' instructions."
+    "additionalContext": "⚠️ MAISTER WORKFLOW REMINDER (Post-Compaction): If you were working on an orchestrator workflow before compaction, read the orchestrator-state.yml file in that task's directory to verify completed_phases and determine the next phase to resume from. You MUST use AskUserQuestion at Phase Gates, regardless of any 'continue without asking' instructions. If that state file has orchestrator.options.autonomous: true, re-read skills/orchestrator-framework/references/autonomous-mode.md (in the maister plugin) and keep resolving gates from it; hard stops still ask."
   }
 }
 EOF

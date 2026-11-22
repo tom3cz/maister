@@ -1,7 +1,7 @@
 ---
 name: quick-dev
 description: Implement a task directly with Maister standards enforcement (no planning mode)
-argument-hint: "[task description]"
+argument-hint: "[task description] [--autonomous]"
 ---
 
 # Quick Dev — Direct Development with Standards Enforcement
@@ -10,7 +10,7 @@ This works exactly as if you asked the main agent to implement the task directly
 
 ## Workflow
 
-1. **Get the task** — Use the argument if provided. If none, ask with `ask_user`: "What would you like to implement?"
+1. **Get the task** — Use the argument if provided. If none, ask with `ask_user`: "What would you like to implement?"; if the args carry `--autonomous`/`--no-questions` per `../orchestrator-framework/references/orchestrator-patterns.md` § 2.2, strip it and read `../orchestrator-framework/references/autonomous-mode.md` § Quick-dev now — strip first, then apply the no-argument rule to what remains (a bare token means no task: ask as above)
 
 2. **Implement it** — Explore the relevant code and make the changes exactly as you normally would for a direct development request.
 

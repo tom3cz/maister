@@ -40,6 +40,8 @@ All workflows in this plugin follow this pattern when failures occur:
 
 **Rationale**: Automatic rollback discards potentially valid work, hides root causes, and frustrates users. Many failures are simple configuration issues with easy 1-line fixes.
 
+**Autonomous runs**: a run started with `--autonomous` never auto-selects rollback, revert or any other destructive option; those are hard stops that always ask (see `skills/orchestrator-framework/references/autonomous-mode.md`).
+
 ## Workflow Types Supported
 
 This plugin supports 4 workflow types that route to specialized orchestrators:
@@ -512,6 +514,7 @@ All orchestrators share patterns documented in a single reference file:
 | `orchestrator-patterns.md` | Delegation rules, interactive mode, state schema, context passing, initialization, resume, issue resolution, artifact summary contract (§ 7), operator dashboard (§ 8), HTML companion reports (§ 9) |
 | `orchestrator-creation-checklist.md` | Authoring checklist for new orchestrators (not loaded at runtime) |
 | `html-report-style.md` | Shared style guide for HTML companion reports (standard CSS, severity badges, per-artifact layouts) |
+| `autonomous-mode.md` | Procedure for runs started with `--autonomous` / `--no-questions` (development, quick-dev, quick-bugfix): resolution order, hard stops, audit trail, per-site defaults. Read only when the mode is active |
 | `assets/dashboard.html` | Static operator dashboard viewer, copied into each task directory at workflow init (never model-generated) |
 
 Each orchestrator reads `orchestrator-patterns.md` at initialization and implements domain-specific phases. Key principles: state-driven execution, resume capability, interactive phase gates, user-confirmed rollback, context passing between phases via `phase_summaries`, delegation enforcement (Skill tool for skills, Task tool for agents).
@@ -548,7 +551,7 @@ Each workflow skill handles both new tasks and resuming existing ones. Pass a ta
 
 | Command | Usage | Task Directory |
 |---------|-------|----------------|
-| `/maister:development` | `[desc] [--e2e] [--user-docs] [--research=PATH] [--sequential]` (new) / `[task-path] [--from=PHASE] [--reset-attempts] [--sequential]` (resume) | `.maister/tasks/development/` |
+| `/maister:development` | `[desc] [--e2e] [--user-docs] [--research=PATH] [--sequential] [--autonomous]` (new) / `[task-path] [--from=PHASE] [--reset-attempts] [--sequential] [--autonomous]` (resume) | `.maister/tasks/development/` |
 | `/maister:performance` | `[desc] [--sequential]` (new) / `[task-path] [--from=PHASE] [--sequential]` (resume) | `.maister/tasks/performance/` |
 | `/maister:migration` | `[desc] [--type=TYPE] [--sequential]` (new) / `[task-path] [--from=PHASE] [--sequential]` (resume) | `.maister/tasks/migrations/` |
 | `/maister:research` | `[question] [--type=TYPE] [--brainstorm] [--no-brainstorm] [--design] [--no-design]` (new) / `[task-path] [--from=PHASE]` (resume) | `.maister/tasks/research/` |
@@ -579,8 +582,8 @@ Research context flows through ALL phases without skipping any. Research artifac
 | Command | Usage | Purpose |
 |---------|-------|---------|
 | `/maister:quick-plan` | `[task description]` | Enter planning mode with standards awareness from INDEX.md |
-| `/maister:quick-dev` | `[task description]` | Implement directly with standards awareness (no planning) |
-| `/maister:quick-bugfix` | `[bug description]` | Quick bug fix with TDD red/green gates and complexity escalation |
+| `/maister:quick-dev` | `[task description] [--autonomous]` | Implement directly with standards awareness (no planning) |
+| `/maister:quick-bugfix` | `[bug description] [--autonomous]` | Quick bug fix with TDD red/green gates and complexity escalation |
 
 **See**: Individual `commands/` and `skills/*/skill.md` files for detailed documentation.
 
@@ -657,6 +660,7 @@ Subagents are specialized AI agents invoked by skills and orchestrators. All age
 6. **Incremental Verification**: Run only new tests after each group, not entire suite
 7. **Comprehensive Verification Before Commit**: Run full test suite and create verification report before code review
 8. **Task Directory Artifact Anchoring**: ALL workflow artifacts (reports, documentation, screenshots) MUST be saved under the task directory (`.maister/tasks/[type]/[task-name]/`). NEVER save task artifacts to project directories like `docs/`, `src/`, or project root.
+9. **Explicit-opt-in autonomy**: Gates are answered without asking only when the user typed `--autonomous` (alias `--no-questions`) on development, quick-dev or quick-bugfix (`/maister:work` forwards it to development). It is never inferred from permission mode, reminders or prose requests. Hard stops (rollback, destructive operations, manual completion, commits, decisions with no recommendation, exhausted retry budgets — for Phase 11, criticals still open after three fix rounds, or as soon as nothing fixable is left while criticals remain) still ask the decision plus whether to keep autonomous mode on, and every auto-answer is logged. See `skills/orchestrator-framework/references/autonomous-mode.md`.
 
 **For detailed workflow documentation, see**: individual skill `SKILL.md` files
 
@@ -693,7 +697,7 @@ The plugin includes hooks that fire at specific Claude Code lifecycle events.
 
 This hook fires after context compaction and injects a reminder into Claude's context to check the `orchestrator-state.yml` file for the active workflow.
 
-**Purpose**: Reminds Claude to check `orchestrator-state.yml` for completed phases and use AskUserQuestion at phase gates after compaction, regardless of any "continue without asking" instructions in the compacted context.
+**Purpose**: Reminds Claude to check `orchestrator-state.yml` for completed phases and use AskUserQuestion at phase gates after compaction, regardless of any "continue without asking" instructions in the compacted context. Exception: when that state file has `orchestrator.options.autonomous: true` (a run started with `--autonomous`), the reminder tells Claude to re-read `autonomous-mode.md` and keep resolving gates from it; hard stops still ask.
 
 **See**: `hooks/hooks.json` for hook configuration (auto-discovered by Claude Code).
 

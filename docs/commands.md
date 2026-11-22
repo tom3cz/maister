@@ -13,6 +13,8 @@ Auto-classifies your task and routes to the appropriate workflow. Accepts:
 
 The plugin classifies the task type with confidence scoring, asks for confirmation, then launches the matching orchestrator.
 
+Add `--autonomous` (alias `--no-questions`) to skip the confirmation and pass the flag on to `/maister:development`. Other workflow types run interactively.
+
 ---
 
 ## Development
@@ -30,9 +32,12 @@ Starts the unified development workflow (14 adaptive phases) or resumes an exist
 | `--research=PATH` | Start development informed by a completed research task |
 | `--from=PHASE` | Start from or resume at a specific phase |
 | `--reset-attempts` | Reset failed attempt counters (resume) |
+| `--autonomous` | Answer gates from the workflow's recommendations instead of asking (alias `--no-questions`). Put it before or after the description, outside any quotes. Also works on resume; see below |
 
 **Task directory**: `.maister/tasks/development/`
 **Resume phases**: `analysis`, `gap`, `spec`, `plan`, `implement`, `verify`
+
+**Unattended runs (`--autonomous`)**: the run asks only at hard stops — rollback or other destructive operations, manual completion, commits, decisions with no recommendation, and blockers still failing after three genuine attempts (in verification: critical issues still open after three fix rounds, or as soon as nothing fixable is left while criticals remain). Each stop asks its decision, then whether to keep autonomous mode on. Every automatic answer is logged under `auto_decisions` in `orchestrator-state.yml`, marked "— auto" on the dashboard, and listed in a final "Autonomous decisions" summary. A resumed task keeps the mode. To resume it interactively, set `orchestrator.options.autonomous: false` in its `orchestrator-state.yml` before resuming (or answer "Continue interactively" at a hard stop). Claude Code's tool-permission prompts are outside the plugin: pair the flag with the `auto` or `acceptEdits` permission mode so the run is not left waiting for an approval.
 
 ---
 
@@ -225,6 +230,8 @@ Implement a task directly — exactly as the main agent normally would, no plann
 
 **When to use**: Task is clear, no architectural decisions needed, you know what needs doing.
 
+**`--autonomous`** (alias `--no-questions`): no clarifying questions; it takes the best-supported interpretation, records it as an assumption, and ends with an "Autonomous decisions" summary. A missing task description is still asked for.
+
 ### `/maister:quick-plan [task description]`
 
 Works exactly like Claude Code's built-in plan mode, with standards enforcement folded in. While planning, it reads INDEX.md and the specific matched standard files (INDEX.md alone is not enough), and the plan must reference the applicable standards and include a Standards Compliance Checklist (verified after implementation) before exiting plan mode.
@@ -234,5 +241,7 @@ Works exactly like Claude Code's built-in plan mode, with standards enforcement 
 Lightweight TDD-driven bug fix without a full orchestrator workflow. Analyzes the bug, writes a failing test, implements the fix, and verifies the test passes.
 
 **When to use**: Simple, isolated bugs where you can quickly identify the root cause. If the bug is too complex (multiple files, unclear root cause, architectural impact), the skill suggests escalating to `/maister:development`.
+
+**`--autonomous`** (alias `--no-questions`): skips plan mode and prints the plan inline, escalates a complex bug (or one whose fix fails three times) to `/maister:development --autonomous`, stops to ask only if the failing test still cannot be reproduced after three re-investigations, and ends with an "Autonomous decisions" summary.
 
 No task directory created — works directly in your codebase.

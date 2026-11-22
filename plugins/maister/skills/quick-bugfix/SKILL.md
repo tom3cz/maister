@@ -1,7 +1,7 @@
 ---
 name: maister:quick-bugfix
 description: Quick bug fix with TDD red/green gates and complexity escalation
-argument-hint: "[bug description]"
+argument-hint: "[bug description] [--autonomous]"
 ---
 
 # Quick Bug Fix
@@ -16,6 +16,7 @@ For complex bugs that grow beyond a quick fix, suggests escalating to the full d
 /maister:quick-bugfix "Login form submits twice on slow connections"
 /maister:quick-bugfix "API returns 500 when email contains special characters"
 /maister:quick-bugfix "Dark mode toggle doesn't persist after refresh"
+/maister:quick-bugfix "Search results ignore the date filter" --autonomous
 ```
 
 ## When to Use
@@ -38,7 +39,7 @@ For complex bugs that grow beyond a quick fix, suggests escalating to the full d
 
 **Get the bug description:**
 
-- If provided as argument, use it directly
+- If provided as argument, use it directly; if the args carry `--autonomous`/`--no-questions` per `../orchestrator-framework/references/orchestrator-patterns.md` § 2.2, strip it and read `../orchestrator-framework/references/autonomous-mode.md` § Quick-bugfix now — strip first, then apply the rules below to what remains (a bare token means no description)
 - If not provided, scan the recent conversation for bug context (error messages, reproduction steps, discussed symptoms). If found, use that as the bug description.
 - Only if no argument AND no bug context in session, use AskUserQuestion:
   ```
@@ -73,6 +74,8 @@ Assess whether this bug exceeds quick-fix scope. If **2 or more** of these signa
 
 **If escalation triggered:**
 
+If this run's Step 1 found the `--autonomous` token, see autonomous-mode.md `qbug.escalate`.
+
 Use AskUserQuestion:
 - Question: "This bug appears more complex than a quick fix — [describe why]. How would you like to proceed?"
 - Options:
@@ -82,6 +85,8 @@ Use AskUserQuestion:
 **If no escalation needed or user chooses to continue:** proceed to Step 4.
 
 ### Step 4: Enter Planning Mode
+
+If this run's Step 1 found the `--autonomous` token, see autonomous-mode.md `qbug.plan-mode`.
 
 **Use the `EnterPlanMode` tool to present the fix plan for user approval.**
 
@@ -140,6 +145,9 @@ If any section is missing, add it before calling ExitPlanMode.
 **The test MUST fail.** This proves the bug is real and reproducible.
 
 **If the test passes:**
+
+If this run's Step 1 found the `--autonomous` token, see autonomous-mode.md `qbug.red-passes`.
+
 - The bug may not be what we think, or it's already fixed
 - Investigate further — re-read the bug description, check if conditions are correct
 - Use AskUserQuestion: "The reproduction test passes — the expected behavior already works under these conditions. Is the bug description accurate, or are there additional conditions?"
@@ -160,6 +168,9 @@ If any section is missing, add it before calling ExitPlanMode.
 - Maximum 3 fix-and-verify iterations
 
 **If still failing after 3 attempts:**
+
+If this run's Step 1 found the `--autonomous` token, see autonomous-mode.md `qbug.fix-budget`.
+
 - Stop and present findings to the user
 - Suggest escalating to `/maister:development` for a more thorough approach
 
@@ -173,6 +184,8 @@ If any section is missing, add it before calling ExitPlanMode.
 - **Standards applied**: Which standards from INDEX.md were followed
 - **Tests**: Which tests were run and their results (including the TDD red→green transition)
 - **Commit suggestion**: Propose a commit message
+
+If this run's Step 1 found the `--autonomous` token, see autonomous-mode.md `qbug.summary`.
 
 **Post-implementation standards check (mandatory):** after the test is green, go through the `## Standards Compliance Checklist` from the plan file and verify each item — mark pass/fail and report it in the summary. Address any failure before marking the task complete.
 

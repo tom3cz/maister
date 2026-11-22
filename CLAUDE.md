@@ -84,6 +84,13 @@ The `beta` branch is used for developing and testing new features before they re
 
 After `git merge --squash`, git doesn't record that beta's commits were merged. A regular `git merge master` back to beta would try to replay all old commits, causing conflicts. `reset --hard master` is safe because all beta work is preserved on master.
 
+### Rolling back a beta
+
+Roll a bad beta forward, never backward: clients on the bad version will not downgrade, and resetting beta would need a force-push.
+1. On `beta`, `git revert` the feature commit (keep the version-bump commit)
+2. Bump the three manifests to the next `X.Y.Z-beta.N`, run `make` to rebuild `plugins/maister-copilot/`, then `make validate`
+3. Commit and `git push origin beta` (no force-push, no version downgrade)
+
 ### Manifest files to update
 
 These three files need version/name changes during the merge workflow:

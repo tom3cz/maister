@@ -16,13 +16,14 @@ Before considering an orchestrator complete, verify ALL items:
 - [ ] **Context passing** — All subagent prompts include ACCUMULATED CONTEXT section with state summaries and prior phase summaries
 - [ ] **Context extraction** — Each phase's State Update extracts findings to `phase_summaries`
 - [ ] **Decision gates** — Phases receiving `decisions_needed` present to user via ask_user
-- [ ] **Interactive mode** — `ask_user` at every `→ MANDATORY GATE` transition
+- [ ] **Interactive mode** — `ask_user` at every `→ MANDATORY GATE` transition — except when the user opted in per patterns § 2.2
 - [ ] **Standards discovery** — `.maister/docs/INDEX.md` referenced in spec, plan, implement, verify phases
 - [ ] **TaskCreate initialization** — Tasks created for all phases at workflow start with `addBlockedBy` dependencies; when `TaskCreate`/`TaskUpdate` are unavailable in the session, record `task_ids: {}` and treat `orchestrator-state.yml` as the sole phase tracker
 - [ ] **Dashboard upkeep** — every orchestrator-owned rewrite moment in `orchestrator-patterns.md` § 8 is implemented, and phases that delegate to `implementation-plan-executor` or `implementation-verifier` leave the phase interior to those skills instead of re-implementing it
 - [ ] **Finalization reconciliation** — Closing phase compares `artifacts[]` in state against disk and names every missing path in the summary (`orchestrator-patterns.md` § 10)
 - [ ] **Auto-recovery table** — Max attempts per phase with recovery strategies
 - [ ] **Domain context schema** — Includes `phase_summaries` structure
+- [ ] **Autonomous site coverage** (optional) — an orchestrator that lists `--autonomous` in its Command Flags has a site-table row in `autonomous-mode.md` for every ask site (gate, decision prompt, retry prompt)
 
 ---
 
@@ -41,7 +42,7 @@ Before considering an orchestrator complete, verify ALL items:
 | Missing standards references | INDEX.md must be referenced in relevant phases |
 | Editing state YAML by appending keys | Duplicate keys and drifted indentation make the file unparseable for strict readers — update keys in place (§ 4 Write Rule) |
 | Finishing without reconciling artifacts | A declared artifact that never reached disk closes the run in silence |
-| Auto-accepting subagent decisions | User must consent via ask_user |
+| Auto-accepting subagent decisions | User must consent via ask_user — except when the user opted in per patterns § 2.2 |
 
 ---
 

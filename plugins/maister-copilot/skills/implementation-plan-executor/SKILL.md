@@ -136,6 +136,10 @@ Read `orchestrator.options.sequential` from `orchestrator-state.yml` at Phase 2 
 - Treat every wave as size 1: dispatch groups one at a time in plan order, ignoring file-overlap analysis.
 - Use cases: debugging a flaky group, constrained dev environments (single port, single DB schema), users who explicitly want serial execution.
 
+### Autonomous Mode
+
+Read `orchestrator.options.autonomous` at the same Phase 2 entry (missing = `false`). If `orchestrator.options.autonomous` is `true`, read `../orchestrator-framework/references/autonomous-mode.md` (its Shared sections and § Executor) and resolve this skill's ask sites from it instead of prompting; log each auto-answer to `work-log.md` and to `orchestrator.auto_decisions` with `phase: phase-8` (`exec.log`). Rollback is never auto-picked. When the key is missing or `false`, every ask below runs unchanged.
+
 ## Continuous Standards Discovery
 
 **Philosophy**: Standards are discovered when relevant, not memorized upfront.
@@ -307,6 +311,7 @@ N.n  - Run tests (only this group's tests)
 
 ### Enforcement
 
+If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, resolve per autonomous-mode.md `exec.tests-missing`.
 When processing a group's report, if N.1 (tests) is not marked done while later steps are, ask the user via ask_user:
    ```
    Question: "Test step N.1 not completed. How to proceed?"
@@ -377,6 +382,7 @@ If task-group-implementer reports failure:
 1. **Do NOT auto-rollback** - User-confirmed rollback only
 2. **Analyze root cause** from subagent output
 3. **Check for easy fixes**: config issues, missing dependencies, test setup
+   If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, resolve per autonomous-mode.md `exec.group-failure`.
 4. **Use ask_user**:
    ```
    Question: "Group [N] implementation failed: [brief reason]. How to proceed?"
@@ -395,6 +401,7 @@ If tests fail after implementation:
 
 1. Analyze failure output
 2. If obvious fix: apply and re-run
+   If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, resolve per autonomous-mode.md `exec.test-failure`.
 3. If unclear: use ask_user with options
 
 ## Validation Checklist

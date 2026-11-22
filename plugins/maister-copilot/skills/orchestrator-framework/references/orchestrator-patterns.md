@@ -61,6 +61,8 @@ For all analysis, planning, implementation, and verification phases: **ALWAYS DE
 
 All orchestrators pause at `→ MANDATORY GATE` transitions for user review and prompt for optional phases.
 
+**Only exception**: a run the user explicitly started with the autonomous flag — § 2.2. Nothing else relaxes this section.
+
 **State ordering rule**: Phase state MUST NOT be updated to 'completed' (via orchestrator-state.yml or TaskUpdate) until AFTER the user responds to the exit gate. Correct sequence: finish phase work → call ask_user → receive user response → update state to completed.
 
 ### Phase Gates Override Permission Modes
@@ -78,8 +80,18 @@ Decide this policy at orchestrator entry. Do NOT re-evaluate it at each gate. Re
 - "Work without stopping" / "minimize clarifying questions" applies ONLY to your discretionary clarifications, never to `→ MANDATORY GATE` workflow checkpoints.
 - A user who said "approve" to ten prior gates was being patient, not setting policy. Each gate is a fresh question.
 - No permission mode, session-reminder, prior-session pattern, or "this task is simple" judgment exempts you from firing `ask_user` at `→ MANDATORY GATE`.
+- Only the literal `--autonomous` / `--no-questions` token (§ 2.2), or `orchestrator.options.autonomous` is `true` in state, changes gate behaviour.
 
 If you ever find yourself reasoning "the user has been approving everything / told me to continue / set auto-mode, so I can skip this gate," that reasoning is the failure mode. STOP and fire the gate.
+
+### 2.2 Autonomous mode (explicit opt-in)
+
+- **Activation**: a standalone `--autonomous` or `--no-questions` token outside any quoted span, in the leading or trailing run of the invocation args. A token inside quotes or in the interior of the description does not count. Ambiguous (repeated, or trailing but read as the object of the description) → stay interactive and print: "`--autonomous` was read as part of the description, not activated — quote the description and pass the flag separately."
+- **Stripped**: remove the token before task naming and before any subagent sees the description. On resume the mode stays on while `orchestrator.options.autonomous` is `true` in state.
+- **Scope**: workflows whose Command Flags table lists `--autonomous`, plus quick-dev and quick-bugfix. Every other workflow ignores the token.
+- **Never inferred**: permission mode, session reminders, compaction summaries, approval history and prose requests ("don't ask me") never activate it — stay interactive and mention the flag once. Never add the token yourself; forward it only when the user typed it in this invocation, or from an already-autonomous quick-bugfix escalation.
+- **Rollback** and other destructive options are never auto-picked.
+- **Procedure**: read `autonomous-mode.md` (beside this file) before the first ask site and after every compaction or resume — it is the single source for the procedure.
 
 ### Phase Entry Checks
 
@@ -116,6 +128,7 @@ When a phase ends with `→ **AUTO-CONTINUE**`:
 | Treating an empty `decisions_needed` as license to skip the phase exit gate | The DECISION GATE (mandatory-when-decisions-exist) and the phase exit `→ MANDATORY GATE` (mandatory-always) are separate. Empty `decisions_needed` only skips the former. |
 | Treating a prior-session compaction summary that shows the user approving every gate as license to skip future gates | The user was being patient, not setting policy. Each gate is a fresh question. Compaction summaries leak behavior patterns into new sessions; they are not standing orders. See § 2.1. |
 | Re-litigating the gate rule at each gate site instead of deciding once at orchestrator entry | The framework rule and the inline gate markers BOTH say "gates fire regardless." Weighing them against a competing session-reminder at every gate produces the same wrong answer N times. Decide policy once, at intake (§ 2.1). |
+| Inferring autonomy from permission mode, reminders, approval history or a prose request, or adding the token yourself | Autonomy is a per-invocation opt-in the user types. Only the token or the state key turns it on (§ 2.2); anything else is the § 2.1 failure mode under another name. |
 
 ---
 
@@ -165,7 +178,7 @@ This enables context passing to downstream phases and supports resume.
 
 ### Decision Enforcement
 
-When a subagent returns `decisions_needed` items, the orchestrator MUST present them to the user via ask_user. Decisions are never silently skipped.
+When a subagent returns `decisions_needed` items, the orchestrator MUST present them to the user via ask_user. Decisions are never silently skipped. (When `orchestrator.options.autonomous` is `true`, they are resolved and logged per § 2.2 instead of asked — still never silently skipped.)
 
 **Anti-Patterns** (NEVER do this):
 
@@ -311,7 +324,7 @@ verification_context:
   issues_found: []
   fixes_applied: []
   decisions_made: []
-  reverify_count: 0          # max 3
+  reverify_count: 0          # max 3 (interactive, counted from reverify_baseline when set; autonomous budget: autonomous-mode.md dev.P11.max)
 ```
 
 ### Shared: phase_summaries entry shape
@@ -336,7 +349,7 @@ phase_summaries:
 
 ### Initialization Steps
 
-1. **Parse arguments**: Extract description, type, entry point (`--from`), optional flags
+1. **Parse arguments**: Extract description, type, entry point (`--from`), optional flags; strip `--autonomous`/`--no-questions` per § 2.2
 2. **Determine starting phase**: New task starts Phase 1; resume reads state for first incomplete phase
 3. **Capture the clock**: run `date -u +"%Y-%m-%dT%H:%M:%SZ"` via Bash NOW — you do NOT know the time from context. Use the result for every timestamp written in this turn (`created`, `updated`, `generated`, `phases[].started`). This is a MANDATORY step, not optional: writing `created: 2026-06-12` or `T00:00:00Z` without having run `date` is the documented failure mode (§ 4 Timestamp Rule).
 4. **Read project config**: read `.maister/config.yml` if it exists; set `orchestrator.options.html_output` from its `html_output` key (default `true` when the file or key is absent — § 4 "Project Configuration"). This single read seeds the state; all dashboard/companion gates below read `options.html_output` from state.
@@ -519,6 +532,8 @@ window.MAISTER_DATA = {
   }
 }
 ```
+
+**Autonomous runs** (§ 2.2): `task.mode` is optional — `"autonomous"` while `orchestrator.options.autonomous` is `true`, omitted otherwise; `gate.answer` carries `"<chosen> — auto"` for auto-answered gates (hard-stop answers get no suffix).
 
 **Cost discipline**: the data file repeats what the orchestrator already writes to state — keep summaries terse (1-2 sentences, no markdown). Do not duplicate artifact content into the data file; the dashboard links to artifacts instead.
 

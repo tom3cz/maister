@@ -22,6 +22,8 @@ If you find yourself reasoning "the user has been approving everything, so I can
 
 Full framework rule: `../orchestrator-framework/references/orchestrator-patterns.md` § 2 and § 2.1.
 
+**The one exception — explicit opt-in (patterns § 2.2):** if the args carry the `--autonomous` / `--no-questions` token per patterns § 2.2, or `orchestrator.options.autonomous` is `true` in this task's orchestrator-state.yml, read `../orchestrator-framework/references/autonomous-mode.md` now and after every compaction or resume, and resolve every ask site from its `Shared:` sections and its Development section. Gate-marker wording then applies to interactive runs only. Nothing else activates this; never re-litigate.
+
 ### Step 1: Load Framework Patterns
 
 **Read the framework reference file NOW using the Read tool:**
@@ -45,7 +47,7 @@ Full framework rule: `../orchestrator-framework/references/orchestrator-patterns
 1. **Capture the clock**: run `date -u +"%Y-%m-%dT%H:%M:%SZ"` via Bash NOW — you do NOT know the time from context. Every timestamp written this turn (`created`, `updated`, `generated`, `phases[].started`) uses this value. Date-only or `T00:00:00Z` values are the documented failure mode (orchestrator-patterns.md § 4 Timestamp Rule). Re-run `date` in later turns before writing timestamps.
 2. **Create Task Items**: Use `TaskCreate` for all phases (see Phase Configuration), then set dependencies with `TaskUpdate addBlockedBy`
 3. **Create Task Directory**: `.maister/tasks/development/YYYY-MM-DD-task-name/`
-4. **Initialize State**: Create `orchestrator-state.yml` with task info and research reference
+4. **Initialize State**: Create `orchestrator-state.yml` with task info and research reference — and always write `orchestrator.options.autonomous` explicitly: `true` if the § 2.2 token is present or the key is already `true`, else `false`. If `orchestrator.options.autonomous` is `true`, follow `dev.init.token` in autonomous-mode.md (create `auto_decisions: []` and `autonomous_attempts: {}` only when absent and never reset them on resume; print the mode line on start and on resume; seed `task.mode`).
 5. **Set up Operator Dashboard** (orchestrator-patterns.md § 8) — first read `.maister/config.yml` and set `orchestrator.options.html_output` (default true if the file/key is absent) and `orchestrator.options.mockup_format` (default `html`; read by Phase 4). **When `html_output` is false, SKIP this entire step** — no `dashboard.html`, no `dashboard-data.js`, no browser auto-open — and proceed. Otherwise: copy `../orchestrator-framework/assets/dashboard.html` to the task root as `dashboard.html`, write the initial `dashboard-data.js` (all phases pending), then **auto-open it in the user's browser** (`open` / `xdg-open` / `start` per platform, passing the plain absolute filesystem path — NEVER a hand-built `file://` URL; on failure just print the path — never block). On resume: re-copy `dashboard.html` only if missing; regenerate `dashboard-data.js` from state; then auto-open it in the browser again (same opener as a new task — the OS focuses an already-open tab rather than duplicating).
 6. **Discover project documentation**: Read `.maister/docs/INDEX.md` (if exists), extract ALL file paths from the "Project Documentation" section. This includes predefined docs (vision, roadmap, tech-stack, architecture) AND any user-added project docs (e.g., deployment.md, api-strategy.md). Store complete list as `project_context.project_doc_paths` in state.
 
@@ -156,10 +158,10 @@ Use for **all development tasks**: bug fixes, enhancements, new features, and an
 **⛔ DECISION GATE** (mandatory — do NOT skip):
 - Parse `decisions_needed` from gap-analyzer output
 - If `decisions_needed.critical` OR `decisions_needed.important` is non-empty:
-  - MUST use `ask_user` — every decision is its own single-select question with its own option set (never flattened into a single question's option list). Critical decisions: one call each with full context. Important decisions: may be grouped as up to 4 separate questions within one call (orchestrator-patterns.md § 3 Decision Gate Pattern)
+  - MUST use `ask_user` — every decision is its own single-select question with its own option set (never flattened into a single question's option list). Critical decisions: one call each with full context. Important decisions: may be grouped as up to 4 separate questions within one call (orchestrator-patterns.md § 3 Decision Gate Pattern) — unless `orchestrator.options.autonomous` is `true` in orchestrator-state.yml; then `dev.P2.decision` / `dev.P2.route` in autonomous-mode.md resolve it.
 - If both are empty: Note "No scope decisions needed" in state
 
-**SELF-CHECK** before continuing: "Did the gap-analyzer return `decisions_needed` items? If yes, did I invoke `ask_user`? If I skipped this, STOP and go back."
+**SELF-CHECK** before continuing: "Did the gap-analyzer return `decisions_needed` items? If yes, did I invoke `ask_user`? If I skipped this, STOP and go back." If `orchestrator.options.autonomous` is `true`: did I log an `auto_decisions` entry, or fire a hard stop, for every `decisions_needed` item?
 
 3. Save scope clarifications to `analysis/scope-clarifications.md`
 4. **Derive optional phase defaults** from the characteristics now in state, and write both values explicitly (`true` or `false`, never left `null`):
@@ -175,11 +177,11 @@ Use for **all development tasks**: bug fixes, enhancements, new features, and an
 
 → **MANDATORY GATE** — fires regardless of permission mode, session-reminders, or prior approval patterns. Invoke `ask_user` now. Proceeding without a user response is a protocol violation (orchestrator-patterns.md § 2 / § 2.1).
 
-The Phase 2 exit gate **always** invokes `ask_user`. The branching is over *which questions get asked*, not whether to ask:
+The Phase 2 exit gate **always** invokes `ask_user`. The branching is over *which questions get asked*, not whether to ask: — unless `orchestrator.options.autonomous` is `true` in orchestrator-state.yml; then `dev.P2.decision` / `dev.P2.route` in autonomous-mode.md resolve it.
 1. If `decisions_needed.critical` or `.important` is non-empty → present the DECISION GATE questions first (see DECISION GATE block above)
 2. Then **always** ask the executive-summary routing question (Phase 3 / 4 / 5 based on `task_characteristics`) shown below
 
-Empty `decisions_needed` skips step 1 only. Step 2 is unconditional. There is no path through Phase 2 that bypasses `ask_user`.
+Empty `decisions_needed` skips step 1 only. Step 2 is unconditional. There is no path through Phase 2 that bypasses `ask_user`. — unless `orchestrator.options.autonomous` is `true` in orchestrator-state.yml; then `dev.P2.decision` / `dev.P2.route` in autonomous-mode.md resolve it.
 
 **ANTI-PATTERN — DO NOT DO THIS:**
 - ❌ "The UI change is small/simple, skipping Phase 4..." — STOP. If `ui_heavy` is true, Phase 4 runs. The gap-analyzer made this assessment, not you.
@@ -194,7 +196,7 @@ ask_user - Display executive summary before asking. Read `analysis/gap-analysis.
 
 ### Phase 3: TDD Red Gate (Conditional)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 2 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 2 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Write a failing test that reproduces the defect
 **Execute**: Direct - write test, verify it FAILS
@@ -213,7 +215,7 @@ ask_user - "TDD red gate complete. Continue to Phase 4?"
 
 ### Phase 4: UI Mockup Generation (Conditional)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Generate UI mockups (HTML by default, ASCII when configured) showing UI integration
 **Execute**: Skill tool - `maister-mockup-studio`
@@ -244,7 +246,7 @@ ask_user - "UI mockups complete — review the live gallery at [companion URL] (
 
 ### Phase 5: Technical Approach, Requirements & Specification
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **⛔ ROUTING GUARD**: Read `task_context.task_characteristics` from `orchestrator-state.yml`. If `has_reproducible_defect` is true and Phase 3 is NOT in `completed_phases` → STOP, execute Phase 3 first. If `ui_heavy` is true and Phase 4 is NOT in `completed_phases` → STOP, execute Phase 4 first.
 
@@ -296,7 +298,7 @@ ask_user - Display executive summary before asking. Read `implementation/spec.md
 
 ### Phase 6: Specification Audit (Recommended)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 5 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 5 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Independent review of specification before implementation
 **Execute**: Task tool - `maister-spec-auditor` subagent
@@ -315,7 +317,7 @@ ask_user - Display executive summary before asking. Read `verification/spec-audi
 
 ### Phase 7: Implementation Planning
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 6 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 6 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Break specification into implementation steps
 
@@ -337,7 +339,7 @@ ask_user - Display executive summary before asking. Read `implementation/impleme
 
 ### Phase 8: Implementation
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 7 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 7 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Execute the implementation plan
 
@@ -366,7 +368,7 @@ ask_user - Display executive summary before asking. Extract from `phase_summarie
 
 ### Phase 9: TDD Green Gate (Conditional)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 8 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 8 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Verify the failing test now passes
 **Execute**: Direct - run the test written in Phase 3
@@ -385,7 +387,7 @@ ask_user - "TDD gate passed. Continue to Phase 10?"
 
 ### Phase 10: Verification Options Prompt
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Determine which verification checks to run using tiered decision matrix
 **Execute**: Direct - display plan, confirm/adjust via ask_user
@@ -428,7 +430,7 @@ Write each answer to state as an explicit `true`/`false` — Phase 14 reads thes
 
 ### Phase 11: Verification & Issue Resolution
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 10 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 10 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Comprehensive implementation verification with fix-then-reverify cycles
 **Output**: `verification/implementation-verification.md`, optional code-review/pragmatic/reality reports, updated `implementation/work-log.md`
@@ -452,7 +454,7 @@ Verification Results:
 ```
 
 **Step 3**: Gate on verification status:
-- `status: passed` → skip to Post-Verification Continuation
+- `status: passed` → skip to Post-Verification Continuation — unless `orchestrator.options.autonomous` is `true` and `verification_context.carried_criticals` is non-empty: then `passed` is not a pass; treat it per autonomous-mode.md `dev.P11.max` as a round with the carried criticals still open
 - `status: passed_with_issues` or `failed` → enter user-driven fix loop (Step 4)
 
 **Step 4**: User-driven fix loop (max 3 iterations):
@@ -471,7 +473,7 @@ Verification Results:
 **Exit conditions**:
 - No critical issues remain → proceed
 - User explicitly chooses "Skip fixes, proceed as-is" or "No, proceed to next phase" → proceed with issues logged
-- Max 3 iterations reached → ask_user: "Proceed with known issues?" / "Stop workflow"
+- Max 3 iterations reached → ask_user: "Proceed with known issues?" / "Stop workflow" — count the iterations from `verification_context.reverify_baseline` when it is set (written when `orchestrator.options.autonomous` is `true` and a Phase 11 hard stop grants more rounds, then turns the mode off; autonomous-mode.md `dev.P11.max`)
 - **MUST NOT proceed with unresolved critical issues unless user explicitly approves**
 
 **⚠️ POST-VERIFICATION CONTINUATION** — After issue resolution completes:
@@ -488,7 +490,7 @@ ask_user - Display executive summary: total issues found, issues fixed, issues r
 
 ### Phase 12: E2E Testing (Optional)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 11 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from Phase 11 in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 > **⚠ Serialization rule**: Phases 12 and 13 share the Playwright MCP browser instance. They MUST run strictly sequentially. Do NOT dispatch the Phase 12 Task call and the Phase 13 Task call in the same assistant message, even when both are enabled. Wait for Phase 12 to return, honor the `→ MANDATORY GATE` / `ask_user` gate below, then start Phase 13. Concurrent dispatch will corrupt both browser sessions.
 
@@ -508,7 +510,7 @@ ask_user - "E2E complete. Continue to Phase 13?"
 
 ### Phase 13: User Documentation (Optional)
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 > **⚠ Serialization rule**: Phases 12 and 13 share the Playwright MCP browser instance — see the same rule on Phase 12. Phase 13 MUST NOT be dispatched in the same assistant message as Phase 12, regardless of how the user answered the gate.
 
@@ -530,7 +532,7 @@ ask_user - "Documentation complete. Continue to Phase 14?"
 
 ### Phase 14: Finalization
 
-> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state.
+> **Phase entry self-check**: Before executing this phase, locate the `ask_user` tool call from the preceding phase in this conversation. If you cannot point to its call ID, STOP and fire that gate now. State updates (`completed_phases`, `TaskUpdate`) without a corresponding `ask_user` call are protocol violations — never paper over a missed gate by updating state. If `orchestrator.options.autonomous` is `true` in orchestrator-state.yml, the preceding gate's `auto_decisions` entry stands in for the call ID; if neither exists, resolve that gate now per autonomous-mode.md.
 
 **Purpose**: Complete workflow and provide next steps
 **Execute**: Direct - create summary, update state, guide commit
@@ -559,6 +561,7 @@ Development-specific fields in `orchestrator-state.yml`:
 ```yaml
 orchestrator:
   options:
+    autonomous: false  # Written explicitly at init (Step 3 item 4): true only from the --autonomous / --no-questions token (patterns § 2.2). Read by implementation-plan-executor and implementation-verifier.
     html_output: true  # Seeded from .maister/config.yml at init (default true). Gates dashboard + HTML companions.
     mockup_format: html  # Seeded from .maister/config.yml at init (default html). Passed to mockup-studio in Phase 4. Auto-falls back to ascii when Node unavailable.
     spec_audit_enabled: true
@@ -569,6 +572,7 @@ orchestrator:
     pragmatic_review_enabled: true
     reality_check_enabled: true
     production_check_enabled: true
+  # auto_decisions: [] and autonomous_attempts: {} (siblings of options) are created when options.autonomous first becomes true and kept afterwards (append-only), also after Continue interactively or a manual false — schema in autonomous-mode.md § Shared: State & Audit Trail.
   task_context:
     risk_level: null
     clarifications_resolved: null
@@ -677,6 +681,7 @@ orchestrator:
 | `--e2e` / `--no-e2e` | Force/skip E2E testing |
 | `--user-docs` / `--no-user-docs` | Force/skip user documentation |
 | `--sequential` | Disable parallel wave dispatch in the executor; run one task group at a time. Persisted as `orchestrator.options.sequential: true` in `orchestrator-state.yml` and read by `implementation-plan-executor` Phase 2. Defaults to off (parallel waves). |
+| `--autonomous` / `--no-questions` | Run unattended: gates and other ask sites are auto-answered and logged; hard stops still ask. Activated only by the typed token (patterns § 2.2), never inferred. Persisted as `orchestrator.options.autonomous: true` in `orchestrator-state.yml` and read by `implementation-plan-executor` and `implementation-verifier`. Explicit flags (`--audit`, `--e2e`, `--user-docs`, `--sequential`, `--from`, and their `--no-` forms) win over autonomous defaults. See `../orchestrator-framework/references/autonomous-mode.md`. Defaults to off. |
 
 ---
 
@@ -772,8 +777,8 @@ Non-UI tasks see zero behavior change.
 ## Command Integration
 
 Invoked via:
-- `/maister-development [description] [--e2e] [--user-docs] [--research=PATH]` (new)
-- `/maister-development [task-path] [--from=PHASE] [--reset-attempts]` (resume)
+- `/maister-development [description] [--e2e] [--user-docs] [--research=PATH]` (new) `[--autonomous]`
+- `/maister-development [task-path] [--from=PHASE] [--reset-attempts]` (resume) `[--autonomous]`
 
 ---
 

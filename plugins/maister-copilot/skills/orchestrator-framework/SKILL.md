@@ -36,6 +36,7 @@ Each orchestrator reads the framework reference file at initialization (Step 1):
 | `references/orchestrator-patterns.md` | Delegation rules, phase gates, state schema, initialization, context passing, issue resolution |
 | `references/orchestrator-creation-checklist.md` | Authoring checklist for creating new orchestrators (not loaded at runtime) |
 | `references/html-report-style.md` | Style guide for HTML companion reports (passed to companion-writing agents) |
+| `references/autonomous-mode.md` | Autonomous-mode procedure: resolution order, hard stops, audit trail, per-site defaults (read only when the mode is active) |
 | `assets/dashboard.html` | The frozen operator dashboard, copied into every task dir |
 
 ## Key Principles
@@ -44,7 +45,7 @@ All orchestrators follow these principles:
 
 1. **State-Driven Execution**: `orchestrator-state.yml` is source of truth
 2. **Resume Capability**: Any orchestrator can be paused and resumed
-3. **Interactive**: Pause after each phase for user review
+3. **Interactive**: Pause after each phase for user review (unless the user explicitly opted in — patterns § 2.2)
 4. **User-Confirmed Rollback**: Never auto-rollback without user approval
 5. **Task Progress**: Always track progress with TaskCreate/TaskUpdate tools
 6. **Standards Discovery**: Reference `.maister/docs/INDEX.md` throughout

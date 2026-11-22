@@ -189,6 +189,12 @@ You can also append additional instructions to narrow scope or guide the workflo
 /maister:development .maister/tasks/product-design/2026-03-10-dashboard-redesign Implement only phase 1
 ```
 
+**Running unattended.** Add `--autonomous` (alias `--no-questions`) to `/maister:development`, `/maister:quick-dev` or `/maister:quick-bugfix` to let the workflow answer its own gates from its recommendations instead of waiting for you; `/maister:work` passes the flag on to development. Nothing else turns it on: not your permission mode, not a request in prose. Some things still stop and ask: rollback and other destructive operations, manual completion, commits, decisions that come with no recommendation, and blockers that survive three genuine fix attempts (in verification: critical issues still open after three fix rounds, or as soon as nothing fixable is left while criticals remain). Each stop asks its decision, then whether to keep autonomous mode on or continue interactively; to resume a task interactively later, set `orchestrator.options.autonomous: false` in its `orchestrator-state.yml` first. A development run records every automatic answer under `auto_decisions` in the task's `orchestrator-state.yml`, marks it "— auto" on the dashboard, and lists it in a final "Autonomous decisions" summary with safety-critical picks first; quick-dev and quick-bugfix give the same summary at the end. Claude Code's own tool-permission prompts are outside the plugin, so pair the flag with the `auto` or `acceptEdits` permission mode if the run should keep going while you are away.
+
+```bash
+/maister:development "Add CSV export to the reports page" --autonomous
+```
+
 ## Known Issues
 
 **Orchestrator may stall after long phases.** After context compaction (which typically happens after lengthy phases like implementation), the main agent may stop progressing automatically. If you notice it's idle, just type something like "continue" or "proceed" — it will pick up where it left off. You can also re-invoke the workflow in resume mode to reload the orchestrator state:

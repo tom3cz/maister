@@ -26,6 +26,7 @@ Auto-classifies tasks and routes to the appropriate workflow orchestrator. Suppo
 | Jira ticket | `PROJ-456`, `https://company.atlassian.net/browse/PROJ-456` |
 | Azure DevOps | `AB#123`, `https://dev.azure.com/org/project/_workitems/edit/123` |
 | No argument | Prompts for input |
+| Autonomous flag | `--autonomous` or `--no-questions`, leading or trailing and outside quotes (development only; other types run interactively) |
 
 ## Examples
 
@@ -43,6 +44,10 @@ Auto-classifies tasks and routes to the appropriate workflow orchestrator. Suppo
 /work "#456"
 /work "PROJ-123"
 /work "AB#789"
+
+# Unattended (development only; gates are auto-answered and logged, hard stops still ask)
+/work "Fix login timeout error on mobile devices" --autonomous
+/work ".maister/tasks/development/2025-10-23-login-timeout" --autonomous
 ```
 
 ## How It Works
@@ -66,6 +71,9 @@ Auto-classifies tasks and routes to the appropriate workflow orchestrator. Suppo
 ## Workflow
 
 ### Step 1: Parse Input and Detect Task Folder
+
+**First, the autonomous token:** apply the `--autonomous` / `--no-questions` token rule (orchestrator-patterns.md § 2.2) to the raw input. If it activates, strip the token, run the folder detection below on the remainder only, and carry the token to Step 2 and Step 3. If it is ambiguous, stay interactive and print the § 2.2 note. Never add the token yourself. Site defaults: autonomous-mode.md § Router & classifier.
+- Remainder empty → the no-argument prompt below (a launch-time ask); keep the token.
 
 **Check if input is an existing task folder:**
 
@@ -143,6 +151,7 @@ Examples:
 - Resume development: `skill: "maister-development"` with `args: ".maister/tasks/development/2025-10-23-fix"`
 - Restart from phase: `skill: "maister-development"` with `args: ".maister/tasks/development/2025-10-26-auth --from=verify"`
 - Fresh attempts: `skill: "maister-migration"` with `args: ".maister/tasks/migrations/2025-10-20-redux --reset-attempts"`
+- Autonomous resume (token carried from Step 1; the status menu above is still asked): `skill: "maister-development"` with `args: ".maister/tasks/development/2025-10-23-fix --autonomous"`. Any other type: display `<type> does not support --autonomous; running interactively` and route without it.
 
 ### Step 3: Classify & Route New Task
 
@@ -156,6 +165,8 @@ Use Task tool:
   description: "Classify task type"
   prompt: "Classify this task into a workflow type: [task description].
            Return structured YAML classification result."
+  If the token was carried from Step 1, end the prompt with this line, exactly:
+           autonomous: true — do not ask the user; return the highest-confidence classification
 
 The subagent will:
 - Detect issue identifiers (GitHub, Jira)
@@ -163,6 +174,7 @@ The subagent will:
 - Analyze codebase context
 - Match keywords and calculate confidence
 - Confirm with user if needed
+- (skip every confirmation when the prompt carries autonomous: true)
 - Return classification in YAML format
 ```
 
@@ -184,12 +196,19 @@ Display:
 Use Skill tool:
   skill: "maister-[orchestrator-name]"
   args: "[description]"
+
+If the token was carried from Step 1:
+  development → args: '"[description]" --autonomous'  (description quoted, token trailing)
+  any other type → Display: "<type> does not support --autonomous; running interactively"
+                   then route with args: "[description]" (no token)
+  A compound task still routes the full description, as above.
 ```
 
 **Routing examples:**
 - development (92%): `skill: "maister-development"` with `args: "Fix login timeout error"`
 - development (88%): `skill: "maister-development"` with `args: "Add filtering to user table"`
 - performance (95%): `skill: "maister-performance"` with `args: "Optimize slow dashboard queries"`
+- development (90%, token carried): `skill: "maister-development"` with `args: '"Fix login timeout error" --autonomous'`
 
 ---
 
@@ -228,7 +247,7 @@ Display:
 
 | Workflow Type | Skill | Args |
 |---------------|-------|------|
-| development | `maister-development` | `[path] [--from=PHASE] [--reset-attempts]` |
+| development | `maister-development` | `[path] [--from=PHASE] [--reset-attempts] [--autonomous]` |
 | performance | `maister-performance` | `[path] [--from=PHASE]` |
 | migration | `maister-migration` | `[path] [--from=PHASE]` |
 | research | `maister-research` | `[path] [--from=PHASE]` |

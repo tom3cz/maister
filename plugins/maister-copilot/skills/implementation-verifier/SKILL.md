@@ -46,7 +46,7 @@ This skill owns the dashboard for the duration of the verification phase, includ
 
 **Check for orchestrator state file** at task path:
 
-- **Orchestrator mode**: If `orchestrator-state.yml` exists, read verification options from it. Execute enabled reviews without re-prompting.
+- **Orchestrator mode**: If `orchestrator-state.yml` exists, read verification options from it. Execute enabled reviews without re-prompting. Never prompts when `orchestrator.options.autonomous` is `true`.
 - **Standalone mode**: If no state file, prompt user for each optional review using ask_user.
 
 **Orchestrator options** (when present, are mandatory):
@@ -93,7 +93,7 @@ All analysis is delegated: tests → test-suite-runner; plan/standards/docs comp
 1. **Check invocation context** for each optional review:
    - If orchestrator mode AND option is `true`: Include in verification (mandatory)
    - If orchestrator mode AND option is `false`: Skip (mark task as completed with `metadata: {skipped: true}`)
-   - If orchestrator mode AND option is `null`: Warn and prompt user
+   - If orchestrator mode AND option is `null`: Warn and prompt user (if `orchestrator.options.autonomous` is `true`: treat as `true`, log, never prompt; see `verify.null-option` in `../orchestrator-framework/references/autonomous-mode.md`)
    - If standalone mode: Prompt user with ask_user
 
 ### Step 2: Set all tasks to in_progress

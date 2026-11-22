@@ -19,6 +19,7 @@ Structured, standards-aware development workflows for Claude Code. Describe what
    Every workflow command also works without arguments: it picks up the task from your conversation.
 
 Workflows pause at phase gates for your decisions, save their state in `.maister/tasks/`, and can be resumed later by passing the task folder path.
+To run `/maister:development`, `/maister:quick-dev` or `/maister:quick-bugfix` without the questions, add `--autonomous` (alias `--no-questions`): gates are answered from the workflow's recommendations and logged, while rollback, commits and real blockers are still left to you.
 
 ## Commands
 
